@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galton Board</title>
+    <title>Interactive Galton Board</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
     <style>
         body {
@@ -12,14 +12,6 @@
             flex-direction: column;
             align-items: center;
             background-color: #f0f0f0;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-        }
-        h1 {
-            margin-bottom: 20px;
-            font-size: 2.5em;
-            color: #333;
         }
         #controls {
             margin: 20px;
@@ -27,50 +19,19 @@
             background-color: white;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
         }
-        label {
+        label, input {
             margin: 10px;
-            font-size: 1.1em;
-        }
-        input {
-            margin: 10px;
-            padding: 5px 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 1em;
-        }
-        button {
-            margin: 10px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            background-color: #4CAF50;
-            color: white;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #canvas-container {
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            border-radius: 10px;
-            overflow: hidden;
         }
     </style>
 </head>
 <body>
-    <h1>Galton Board</h1>
+    <h1>Interactive Galton Board</h1>
     <div id="controls">
-        <label for="levels">Levels:</label>
-        <input type="number" id="levels" min="5" max="20" value="12">
-        <label for="balls">Balls:</label>
-        <input type="number" id="balls" min="1" max="500" value="200">
+        <label for="levels">Number of Levels:</label>
+        <input type="number" id="levels" min="1" max="20" value="10">
+        <label for="balls">Number of Balls:</label>
+        <input type="number" id="balls" min="1" max="1000" value="500">
         <button onclick="restart()">Restart</button>
     </div>
     <div id="canvas-container"></div>
@@ -79,9 +40,7 @@
         let levels, balls;
         let positions = [];
         let bins = [];
-        let pegSize = 6;
-        let ballSize = 8;
-        let ballSpacing = 2;
+        let maxBinHeight = 0;
 
         function setup() {
             const canvas = createCanvas(800, 600);
@@ -94,6 +53,7 @@
             balls = parseInt(document.getElementById('balls').value);
             positions = [];
             bins = new Array(levels + 1).fill(0);
+            maxBinHeight = 0;
             loop();
         }
 
@@ -105,45 +65,46 @@
             for (let i = 0; i < levels; i++) {
                 for (let j = 0; j <= i; j++) {
                     let x = map(j, 0, i, width/4, 3*width/4);
-                    let y = map(i, 0, levels, 50, height - 100);
-                    circle(x, y, pegSize);
+                    let y = map(i, 0, levels, 50, height - 150);
+                    circle(x, y, 5);
                 }
             }
             
             // Update ball positions
             if (positions.length < balls) {
-                positions.push({x: width/2, y: 0, path: [], settled: false});
+                positions.push({x: width/2, y: 0, path: []});
             }
             
-            for (let ball of positions) {
-                if (!ball.settled) {
-                    if (ball.path.length < levels) {
-                        ball.path.push(random() < 0.5 ? -1 : 1);
-                    }
-                    ball.x += ball.path[ball.path.length - 1] * width / (4 * levels);
-                    ball.y = map(ball.path.length, 0, levels, 0, height - 100);
-                    
-                    if (ball.path.length === levels) {
-                        let binIndex = ball.path.filter(p => p === 1).length;
-                        bins[binIndex]++;
-                        ball.settled = true;
-                        ball.finalX = map(binIndex, 0, levels, width/4, 3*width/4);
-                        ball.finalY = height - 50 - (bins[binIndex] * (ballSize + ballSpacing));
-                    }
-                } else {
-                    if (ball.x !== ball.finalX) {
-                        ball.x += (ball.finalX - ball.x) * 0.1;
-                    }
-                    if (ball.y < ball.finalY) {
-                        ball.y += (ball.finalY - ball.y) * 0.1;
-                    }
+            for (let i = positions.length - 1; i >= 0; i--) {
+                let ball = positions[i];
+                if (ball.path.length < levels) {
+                    ball.path.push(random() < 0.5 ? -1 : 1);
                 }
+                ball.x += ball.path[ball.path.length - 1] * width / (4 * levels);
+                ball.y = map(ball.path.length, 0, levels, 0, height - 150);
                 
-                fill(255, 0, 0);
-                circle(ball.x, ball.y, ballSize);
+                if (ball.path.length === levels) {
+                    let binIndex = ball.path.filter(p => p === 1).length;
+                    bins[binIndex]++;
+                    if (bins[binIndex] > maxBinHeight) {
+                        maxBinHeight = bins[binIndex];
+                    }
+                    positions.splice(i, 1);
+                } else {
+                    fill(255, 0, 0);
+                    circle(ball.x, ball.y, 5);
+                }
             }
             
-            if (positions.length === balls && positions.every(ball => ball.settled && abs(ball.y - ball.finalY) < 0.1)) {
+            // Draw bins
+            for (let i = 0; i <= levels; i++) {
+                let x = map(i, 0, levels, width/4, 3*width/4);
+                let h = map(bins[i], 0, maxBinHeight, 0, 100);
+                fill(0, 255, 0);
+                rect(x - 10, height - 50 - h, 20, h);
+            }
+            
+            if (positions.length === 0 && frameCount > 10) {
                 noLoop();
             }
         }
