@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Improved Galton Board</title>
+    <title>Galton Board</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
     <style>
         body {
@@ -65,7 +65,7 @@
     </style>
 </head>
 <body>
-    <h1>Simulated Galton Board</h1>
+    <h1>Galton Board</h1>
     <div id="controls">
         <label for="levels">Levels:</label>
         <input type="number" id="levels" min="5" max="20" value="12">
@@ -79,9 +79,9 @@
         let levels, balls;
         let positions = [];
         let bins = [];
-        let maxBinHeight = 0;
         let pegSize = 6;
         let ballSize = 8;
+        let ballSpacing = 2;
 
         function setup() {
             const canvas = createCanvas(800, 600);
@@ -94,7 +94,6 @@
             balls = parseInt(document.getElementById('balls').value);
             positions = [];
             bins = new Array(levels + 1).fill(0);
-            maxBinHeight = 0;
             loop();
         }
 
@@ -127,15 +126,16 @@
                     if (ball.path.length === levels) {
                         let binIndex = ball.path.filter(p => p === 1).length;
                         bins[binIndex]++;
-                        if (bins[binIndex] > maxBinHeight) {
-                            maxBinHeight = bins[binIndex];
-                        }
                         ball.settled = true;
-                        ball.finalY = height - 50 - (bins[binIndex] * ballSize);
+                        ball.finalX = map(binIndex, 0, levels, width/4, 3*width/4);
+                        ball.finalY = height - 50 - (bins[binIndex] * (ballSize + ballSpacing));
                     }
                 } else {
+                    if (ball.x !== ball.finalX) {
+                        ball.x += (ball.finalX - ball.x) * 0.1;
+                    }
                     if (ball.y < ball.finalY) {
-                        ball.y += 2;
+                        ball.y += (ball.finalY - ball.y) * 0.1;
                     }
                 }
                 
@@ -143,16 +143,7 @@
                 circle(ball.x, ball.y, ballSize);
             }
             
-            // Draw bins
-            noStroke();
-            for (let i = 0; i <= levels; i++) {
-                let x = map(i, 0, levels, width/4, 3*width/4);
-                let h = map(bins[i], 0, maxBinHeight, 0, 100);
-                fill(0, 255, 0);
-                rect(x - 15, height - 50, 30, -h);
-            }
-            
-            if (positions.length === balls && positions.every(ball => ball.settled && ball.y >= ball.finalY)) {
+            if (positions.length === balls && positions.every(ball => ball.settled && abs(ball.y - ball.finalY) < 0.1)) {
                 noLoop();
             }
         }
